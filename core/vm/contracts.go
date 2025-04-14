@@ -126,6 +126,30 @@ var PrecompiledContractsBLS = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{18}): &Bls12381MapG2{},
 }
 
+// PrecompiledContractsPrague contains the default set of pre-compiled Ethereum
+// contracts used in the Prague release.
+var PrecompiledContractsPrague = map[common.Address]PrecompiledContract{
+	common.BytesToAddress([]byte{1}):    &Ecrecover{},
+	common.BytesToAddress([]byte{2}):    &Sha256hash{},
+	common.BytesToAddress([]byte{3}):    &Ripemd160hash{},
+	common.BytesToAddress([]byte{4}):    &DataCopy{},
+	common.BytesToAddress([]byte{5}):    &BigModExp{Eip2565: true},
+	common.BytesToAddress([]byte{6}):    &bn256AddByzantium{},
+	common.BytesToAddress([]byte{7}):    &bn256ScalarMulByzantium{},
+	common.BytesToAddress([]byte{8}):    &bn256PairingByzantium{},
+	common.BytesToAddress([]byte{9}):    &Blake2F{},
+	common.BytesToAddress([]byte{0xa}):  &Bls12381G1Add{},
+	common.BytesToAddress([]byte{0xb}):  &Bls12381G1Mul{},
+	common.BytesToAddress([]byte{0xc}):  &Bls12381G1MultiExp{},
+	common.BytesToAddress([]byte{0xd}):  &Bls12381G2Add{},
+	common.BytesToAddress([]byte{0xe}):  &Bls12381G2Mul{},
+	common.BytesToAddress([]byte{0xf}):  &Bls12381G2MultiExp{},
+	common.BytesToAddress([]byte{0x10}): &Bls12381Pairing{},
+	common.BytesToAddress([]byte{0x11}): &Bls12381MapG1{},
+	common.BytesToAddress([]byte{0x12}): &Bls12381MapG2{},
+	common.BytesToAddress([]byte{0x99}): &LLMPrecompile{}, // LLM inference precompiled contract
+}
+
 var (
 	PrecompiledAddressesCancun    []common.Address
 	PrecompiledAddressesBerlin    []common.Address

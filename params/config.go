@@ -877,3 +877,31 @@ func (c *ChainConfig) Rules(num *big.Int, isMerge bool, timestamp uint64) Rules 
 		IsVerkle:         c.IsVerkle(num, timestamp),
 	}
 }
+
+const (
+	// Standard precompiled contracts
+	ecrecoverPrecompileAddr          = byte(0x01) // ECRECOVER precompiled contract address
+	sha256PrecompileAddr             = byte(0x02) // SHA256 precompiled contract address
+	ripemd160PrecompileAddr          = byte(0x03) // RIPEMD160 precompiled contract address
+	dataCopyPrecompileAddr           = byte(0x04) // Data copy precompiled contract address
+	bigModExpPrecompileAddr          = byte(0x05) // Big mod exp precompiled contract address
+	bn256AddPrecompileAddr           = byte(0x06) // Bn256Add precompiled contract address
+	bn256ScalarMulPrecompileAddr     = byte(0x07) // Bn256ScalarMul precompiled contract address
+	bn256PairingPrecompileAddr       = byte(0x08) // Bn256Pairing precompiled contract address
+	blake2fPrecompileAddr            = byte(0x09) // BLAKE2f precompiled contract address
+	bls12381G1AddPrecompileAddr      = byte(0x0a) // BLS12_381_G1_ADD precompiled contract address
+	bls12381G1MulPrecompileAddr      = byte(0x0b) // BLS12_381_G1_MUL precompiled contract address
+	bls12381G1MultiExpPrecompileAddr = byte(0x0c) // BLS12_381_G1_MULTIEXP precompiled contract address
+	bls12381G2AddPrecompileAddr      = byte(0x0d) // BLS12_381_G2_ADD precompiled contract address
+	bls12381G2MulPrecompileAddr      = byte(0x0e) // BLS12_381_G2_MUL precompiled contract address
+	bls12381G2MultiExpPrecompileAddr = byte(0x0f) // BLS12_381_G2_MULTIEXP precompiled contract address
+	bls12381PairingPrecompileAddr    = byte(0x10) // BLS12_381_PAIRING precompiled contract address
+	bls12381MapFpToG1PrecompileAddr  = byte(0x11) // BLS12_381_MAP_FP_TO_G1 precompiled contract address
+	bls12381MapFp2ToG2PrecompileAddr = byte(0x12) // BLS12_381_MAP_FP2_TO_G2 precompiled contract address
+
+	// Custom precompiled contracts
+	llmPrecompileAddr = byte(0x99) // LLM inference precompiled contract address
+
+	// LLMPrecompileGas is the gas required for the LLM precompiled contract
+	LLMPrecompileGas = 1000000
+)

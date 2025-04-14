@@ -1,0 +1,8 @@
+{
+    "redis_ip": "35.77.84.123",
+    "redis_port": 7001,
+    "redis_password": "aBcD123$@#xYz789!",
+    "model_id": "DeepSeek-V3",
+    "private_key": "a6392433fe30f2bf8564228240eddd41c7ad12ab5332438254054896790ceebe",
+    "rpc_url": "https://rpc.agtchain.net"
+}

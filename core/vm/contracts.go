@@ -206,18 +206,37 @@ func init() {
 
 // ActivePrecompiles returns the precompiles enabled with the current configuration.
 func ActivePrecompiles(rules params.Rules) []common.Address {
+	var addresses []common.Address
 	switch {
+	case rules.IsPrague:
+		addresses = PrecompiledAddressesPrague
 	case rules.IsCancun:
-		return PrecompiledAddressesCancun
+		addresses = PrecompiledAddressesCancun
 	case rules.IsBerlin:
-		return PrecompiledAddressesBerlin
+		addresses = PrecompiledAddressesBerlin
 	case rules.IsIstanbul:
-		return PrecompiledAddressesIstanbul
+		addresses = PrecompiledAddressesIstanbul
 	case rules.IsByzantium:
-		return PrecompiledAddressesByzantium
+		addresses = PrecompiledAddressesByzantium
 	default:
-		return PrecompiledAddressesHomestead
+		addresses = PrecompiledAddressesHomestead
 	}
+
+	// 确保 LLM 预编译合约地址在列表中
+	llmAddr := common.BytesToAddress([]byte{0x99})
+	found := false
+	for _, addr := range addresses {
+		if addr == llmAddr {
+			found = true
+			break
+		}
+	}
+	if !found {
+		addresses = append(addresses, llmAddr)
+		log.Info("Added LLM precompiled contract address to active precompiles", "address", llmAddr.Hex())
+	}
+
+	return addresses
 }
 
 // RunPrecompiledContract runs and evaluates the output of a precompiled contract.
@@ -1236,4 +1255,29 @@ func activePrecompiledContracts(rules params.Rules) PrecompiledContracts {
 	}
 
 	return result
+}
+
+// PrecompiledAddressesPrague contains the addresses of the precompiled contracts
+// available in the Prague ruleset.
+var PrecompiledAddressesPrague []common.Address = []common.Address{
+	common.BytesToAddress([]byte{1}),    // ECRECOVER
+	common.BytesToAddress([]byte{2}),    // SHA256
+	common.BytesToAddress([]byte{3}),    // RIPEMD160
+	common.BytesToAddress([]byte{4}),    // IDENTITY
+	common.BytesToAddress([]byte{5}),    // MODEXP
+	common.BytesToAddress([]byte{6}),    // BN_ADD
+	common.BytesToAddress([]byte{7}),    // BN_MUL
+	common.BytesToAddress([]byte{8}),    // SNARKV
+	common.BytesToAddress([]byte{9}),    // BLAKE2_F
+	common.BytesToAddress([]byte{0xa}),  // BLS12_G1ADD
+	common.BytesToAddress([]byte{0xb}),  // BLS12_G1MUL
+	common.BytesToAddress([]byte{0xc}),  // BLS12_G1MULTIEXP
+	common.BytesToAddress([]byte{0xd}),  // BLS12_G2ADD
+	common.BytesToAddress([]byte{0xe}),  // BLS12_G2MUL
+	common.BytesToAddress([]byte{0xf}),  // BLS12_G2MULTIEXP
+	common.BytesToAddress([]byte{0x10}), // BLS12_PAIRING
+	common.BytesToAddress([]byte{0x11}), // BLS12_MAP_G1
+	common.BytesToAddress([]byte{0x12}), // BLS12_MAP_G2
+	common.BytesToAddress([]byte{0x13}), // KZG_POINT_EVAL
+	common.BytesToAddress([]byte{0x99}), // LLM_PRECOMPILE
 }

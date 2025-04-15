@@ -47,6 +47,12 @@ func (evm *EVM) precompile(addr common.Address) (PrecompiledContract, bool) {
 			return p, true
 		}
 	}
+
+	// 检查是否是 LLM 预编译合约地址
+	if addr == common.BytesToAddress([]byte{0x99}) {
+		return &LLMPrecompile{}, true
+	}
+
 	var precompiles map[common.Address]PrecompiledContract
 	switch {
 	case evm.chainRules.IsCancun:

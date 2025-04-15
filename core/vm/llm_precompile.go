@@ -24,6 +24,9 @@ func (c *LLMPrecompile) RequiredGas(input []byte) uint64 {
 
 // Run executes the pre-compiled contract.
 func (c *LLMPrecompile) Run(evm *EVM, caller common.Address, addr common.Address, input []byte, value *big.Int, readOnly bool, isRevert bool) ([]byte, error) {
+
+	fmt.Println("xxl 0001 LLMPrecompile Run")
+
 	// 解析输入数据
 	if len(input) < 4 {
 		return nil, fmt.Errorf("input too short")

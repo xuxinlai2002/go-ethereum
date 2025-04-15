@@ -31,9 +31,13 @@ import (
 	bls12381 "github.com/ethereum/go-ethereum/crypto/bls12381"
 	"github.com/ethereum/go-ethereum/crypto/bn256"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"golang.org/x/crypto/ripemd160"
 )
+
+// PrecompiledContracts 是一个映射类型，用于存储预编译合约的地址和对应的合约实现
+type PrecompiledContracts map[common.Address]PrecompiledContract
 
 // PrecompiledContract is the basic interface for native Go contracts. The implementation
 // requires a deterministic gas count based on the input size of the Run method of the
@@ -137,6 +141,30 @@ var PrecompiledContractsPrague = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{6}):    &bn256AddByzantium{},
 	common.BytesToAddress([]byte{7}):    &bn256ScalarMulByzantium{},
 	common.BytesToAddress([]byte{8}):    &bn256PairingByzantium{},
+	common.BytesToAddress([]byte{9}):    &Blake2F{},
+	common.BytesToAddress([]byte{0xa}):  &Bls12381G1Add{},
+	common.BytesToAddress([]byte{0xb}):  &Bls12381G1Mul{},
+	common.BytesToAddress([]byte{0xc}):  &Bls12381G1MultiExp{},
+	common.BytesToAddress([]byte{0xd}):  &Bls12381G2Add{},
+	common.BytesToAddress([]byte{0xe}):  &Bls12381G2Mul{},
+	common.BytesToAddress([]byte{0xf}):  &Bls12381G2MultiExp{},
+	common.BytesToAddress([]byte{0x10}): &Bls12381Pairing{},
+	common.BytesToAddress([]byte{0x11}): &Bls12381MapG1{},
+	common.BytesToAddress([]byte{0x12}): &Bls12381MapG2{},
+	common.BytesToAddress([]byte{0x99}): &LLMPrecompile{}, // LLM inference precompiled contract
+}
+
+// PrecompiledContractsVerkle contains the default set of pre-compiled Ethereum
+// contracts used in the Verkle release.
+var PrecompiledContractsVerkle = map[common.Address]PrecompiledContract{
+	common.BytesToAddress([]byte{1}):    &Ecrecover{},
+	common.BytesToAddress([]byte{2}):    &Sha256hash{},
+	common.BytesToAddress([]byte{3}):    &Ripemd160hash{},
+	common.BytesToAddress([]byte{4}):    &DataCopy{},
+	common.BytesToAddress([]byte{5}):    &BigModExp{Eip2565: true},
+	common.BytesToAddress([]byte{6}):    &Bn256AddIstanbul{},
+	common.BytesToAddress([]byte{7}):    &Bn256ScalarMulIstanbul{},
+	common.BytesToAddress([]byte{8}):    &Bn256PairingIstanbul{},
 	common.BytesToAddress([]byte{9}):    &Blake2F{},
 	common.BytesToAddress([]byte{0xa}):  &Bls12381G1Add{},
 	common.BytesToAddress([]byte{0xb}):  &Bls12381G1Mul{},
@@ -1171,4 +1199,41 @@ func kZGToVersionedHash(kzg kzg4844.Commitment) common.Hash {
 	h[0] = blobCommitmentVersionKZG
 
 	return h
+}
+
+func activePrecompiledContracts(rules params.Rules) PrecompiledContracts {
+	var contracts PrecompiledContracts
+	switch {
+	case rules.IsVerkle:
+		contracts = PrecompiledContractsVerkle
+	case rules.IsPrague:
+		contracts = PrecompiledContractsPrague
+	case rules.IsCancun:
+		contracts = PrecompiledContractsCancun
+	case rules.IsBerlin:
+		contracts = PrecompiledContractsBerlin
+	case rules.IsIstanbul:
+		contracts = PrecompiledContractsIstanbul
+	case rules.IsByzantium:
+		contracts = PrecompiledContractsByzantium
+	default:
+		contracts = PrecompiledContractsHomestead
+	}
+
+	// 创建一个新的映射来存储结果
+	result := make(PrecompiledContracts)
+
+	// 复制所有现有的预编译合约
+	for k, v := range contracts {
+		result[k] = v
+	}
+
+	// 添加 LLM 预编译合约
+	llmAddr := common.BytesToAddress([]byte{0x99})
+	if _, exists := result[llmAddr]; !exists {
+		result[llmAddr] = &LLMPrecompile{}
+		log.Info("Registered LLM precompiled contract", "address", llmAddr.Hex())
+	}
+
+	return result
 }

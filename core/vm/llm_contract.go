@@ -17,9 +17,15 @@
 package vm
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+)
+
+var (
+	// ErrInsufficientBalance 表示余额不足的错误
+	ErrInsufficientBalance = errors.New("insufficient balance for LLM inference")
 )
 
 // LLMPrecompile 是 LLM 推理预编译合约的实现

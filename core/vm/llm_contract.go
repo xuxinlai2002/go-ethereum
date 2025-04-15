@@ -17,15 +17,9 @@
 package vm
 
 import (
-	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-)
-
-var (
-	// ErrInsufficientBalance 表示余额不足的错误
-	ErrInsufficientBalance = errors.New("insufficient balance for LLM inference")
 )
 
 // LLMPrecompile 是 LLM 推理预编译合约的实现
@@ -43,7 +37,7 @@ func (c *LLMPrecompile) RequiredGas(input []byte) uint64 {
 }
 
 // Run 执行 LLM 推理
-func (c *LLMPrecompile) Run(input []byte) ([]byte, error) {
+func (c *LLMPrecompile) Run(evm *EVM, sender common.Address, callingContract common.Address, input []byte, value *big.Int, readOnly bool, isFromDelegateCall bool) ([]byte, error) {
 	// TODO: 实现实际的 LLM 推理逻辑
 	// 这里需要与 LLM 服务进行集成
 
@@ -60,7 +54,7 @@ func (c *LLMPrecompile) RunWithValue(input []byte, value *big.Int) ([]byte, erro
 	}
 
 	// 调用普通的 Run 方法
-	return c.Run(input)
+	return c.Run(nil, common.Address{}, common.Address{}, input, value, false, false)
 }
 
 // RunWithContext 执行带上下文的 LLM 推理
@@ -84,12 +78,4 @@ type Context struct {
 	Value       *big.Int
 	Data        []byte
 	State       StateDB
-}
-
-// StateDB 是状态数据库接口
-type StateDB interface {
-	GetBalance(addr common.Address) *big.Int
-	GetCode(addr common.Address) []byte
-	GetState(addr common.Address, hash common.Hash) common.Hash
-	SetState(addr common.Address, key, value common.Hash)
 }

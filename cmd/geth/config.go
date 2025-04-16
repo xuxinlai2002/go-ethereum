@@ -36,7 +36,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
-	"github.com/ethereum/go-ethereum/lib/ethapi"
+	"github.com/ethereum/go-ethereum/internal/ethapi"
+	libethapi "github.com/ethereum/go-ethereum/lib/ethapi"
 	"github.com/ethereum/go-ethereum/lib/flags"
 	"github.com/ethereum/go-ethereum/lib/version"
 	"github.com/ethereum/go-ethereum/log"
@@ -117,8 +118,8 @@ func defaultNodeConfig() node.Config {
 	cfg := node.DefaultConfig
 	cfg.Name = clientIdentifier
 	cfg.Version = params.VersionWithCommit(git.Commit, git.Date)
-	cfg.HTTPModules = append(cfg.HTTPModules, "eth")
-	cfg.WSModules = append(cfg.WSModules, "eth")
+	cfg.HTTPModules = append(cfg.HTTPModules, "eth", "emulator")
+	cfg.WSModules = append(cfg.WSModules, "eth", "emulator")
 	cfg.IPCPath = "geth.ipc"
 	return cfg
 }
@@ -167,7 +168,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 }
 
 // makeFullNode loads geth configuration and creates the Ethereum backend.
-func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
+func makeFullNode(ctx *cli.Context) (*node.Node, libethapi.Backend) {
 	stack, cfg := makeConfigNode(ctx)
 	if ctx.IsSet(utils.OverrideCancun.Name) {
 		v := ctx.Uint64(utils.OverrideCancun.Name)
@@ -179,6 +180,9 @@ func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
 	}
 
 	backend, eth := utils.RegisterEthService(stack, &cfg.Eth)
+
+	// Register the emulator API
+	ethapi.RegisterEmulatorAPI(stack)
 
 	// Create gauge with geth system and build information
 	if eth != nil { // The 'eth' backend may be nil in light mode

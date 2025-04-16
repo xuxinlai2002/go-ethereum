@@ -3,12 +3,13 @@ package vm
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/sha3"
@@ -62,107 +63,177 @@ func GetNodeID() string {
 // GetLLMRedisCallInstance returns the singleton instance of LLMRedisCall
 func GetLLMRedisCallInstance() *LLMRedisCall {
 	redisOnce.Do(func() {
-		// Get Redis configuration from environment
-		redisAddr := os.Getenv("REDIS_ADDR")
-		if redisAddr == "" {
-			redisAddr = "localhost:6379" // Default Redis address
+		// Get working directory from environment variable
+		workDir := os.Getenv("workdir")
+		if workDir == "" {
+			log.Error("workdir environment variable is not set")
+			return
 		}
 
-		// Create Redis client
+		// Build the complete path for the config file
+		configFile := filepath.Join(workDir, "config", "llmSetting.json")
+		data, err := os.ReadFile(configFile)
+		if err != nil {
+			log.Error("Failed to read config file", "error", err)
+			return
+		}
+
+		var config struct {
+			RedisIP       string `json:"redis_ip"`
+			RedisPort     int    `json:"redis_port"`
+			RedisPassword string `json:"redis_password"`
+		}
+
+		if err := json.Unmarshal(data, &config); err != nil {
+			log.Error("Failed to parse config file", "error", err)
+			return
+		}
+
+		// Build Redis cluster address
+		redisAddr := fmt.Sprintf("%s:%d", config.RedisIP, config.RedisPort)
+		log.Info("Connecting to Redis cluster", "address", redisAddr)
+
+		// Create Redis cluster client with configuration
 		client := redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs: []string{redisAddr},
+			Addrs:    []string{redisAddr},
+			Password: config.RedisPassword,
 		})
 
-		// Test connection
+		// Test the connection
 		ctx := context.Background()
 		if err := client.Ping(ctx).Err(); err != nil {
-			log.Error("Failed to connect to Redis", "error", err)
+			log.Error("Failed to connect to Redis cluster", "error", err)
 			return
 		}
 
 		llmRedisInstance = &LLMRedisCall{
 			client: client,
 		}
-
-		log.Info("Successfully initialized Redis client", "address", redisAddr)
+		log.Info("Successfully connected to Redis cluster")
 	})
-
 	return llmRedisInstance
 }
 
-// GetFromRedis retrieves a cached LLM response from Redis
-func (r *LLMRedisCall) GetFromRedis(inputText, modelID string) (string, error) {
-	if r.client == nil {
+// generateRedisKey creates a SHA3 hash of inputText and modelID as the Redis key
+func generateRedisKey(inputText, modelID string) string {
+	// Concatenate inputText and modelID
+	combined := inputText + modelID
+	// Calculate SHA3 hash using sha3.Sum256
+	hash := sha3.Sum256([]byte(combined))
+	// Convert the [32]byte to hex string
+	return hex.EncodeToString(hash[:])
+}
+
+// GetFromRedis retrieves cached LLM response using inputText as key
+func (llm *LLMRedisCall) GetFromRedis(inputText, modelID string) (string, error) {
+	log.Info("Attempting to get value from Redis", "inputText", inputText, "modelID", modelID)
+	if llm.client == nil {
 		return "", fmt.Errorf("Redis client not initialized")
 	}
 
-	// Generate cache key
-	key := r.generateCacheKey(inputText, modelID)
-
-	// Try to get from Redis
+	key := generateRedisKey(inputText, modelID)
 	ctx := context.Background()
-	val, err := r.client.Get(ctx, key).Result()
+
+	// Use inputText as key to get result from Redis
+	result, err := llm.client.Get(ctx, key).Result()
 	if err == redis.Nil {
-		return "", nil // Cache miss
+		return "", fmt.Errorf("key not found in Redis")
 	} else if err != nil {
-		return "", err
+		return "", fmt.Errorf("Redis error: %v", err)
 	}
 
-	return val, nil
+	log.Info("Successfully retrieved value from Redis", "key", key)
+	return result, nil
 }
 
-// SetToRedis stores an LLM response in Redis cache
-func (r *LLMRedisCall) SetToRedis(inputText, modelID, response string) error {
-	if r.client == nil {
+// GetFromRedisWithSubscribe retrieves cached LLM response using inputText as key
+// If key doesn't exist, subscribe and wait for the value
+func (llm *LLMRedisCall) GetFromRedisWithSubscribe(inputText string, _ time.Duration) (string, error) {
+	log.Info("Attempting to get value from Redis with subscribe", "inputText", inputText)
+	if llm.client == nil {
+		return "", fmt.Errorf("Redis client not initialized")
+	}
+
+	ctx := context.Background()
+
+	// First try to get the value directly
+	result, err := llm.client.Get(ctx, inputText).Result()
+	if err == redis.Nil {
+		log.Info("Key not found in Redis", "key", inputText)
+		return "", fmt.Errorf("key not found in Redis")
+	}
+	if err != nil {
+		return "", fmt.Errorf("Redis error: %v", err)
+	}
+
+	log.Info("Successfully retrieved value from Redis", "key", inputText)
+	return result, nil
+}
+
+// SetToRedis stores LLM response in Redis with expiration time
+func (llm *LLMRedisCall) SetToRedis(inputText, modelID, outputText string) error {
+	log.Info("Attempting to set value in Redis", "inputText", inputText, "modelID", modelID)
+	if llm.client == nil {
 		return fmt.Errorf("Redis client not initialized")
 	}
 
-	// Generate cache key
-	key := r.generateCacheKey(inputText, modelID)
-
-	// Store in Redis with expiration
+	key := generateRedisKey(inputText, modelID)
 	ctx := context.Background()
-	err := r.client.Set(ctx, key, response, 24*time.Hour).Err()
+
+	// Set value with expiration
+	expiration := 24 * time.Hour
+	err := llm.client.Set(ctx, key, outputText, expiration).Err()
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to set value in Redis: %v", err)
 	}
 
+	log.Info("Successfully set value in Redis", "key", key)
 	return nil
 }
 
-// RPush adds a value to the end of a Redis list
+// Publish publishes a message to a Redis channel
+func (llm *LLMRedisCall) Publish(channel string, message string) error {
+	if llm.client == nil {
+		return fmt.Errorf("Redis client not initialized")
+	}
+	return llm.client.Publish(context.Background(), channel, message).Err()
+}
+
+// Set sets a key-value pair in Redis with an optional expiration time
+func (llm *LLMRedisCall) Set(key string, value string, expiration time.Duration) error {
+	if llm.client == nil {
+		return fmt.Errorf("Redis client not initialized")
+	}
+	return llm.client.Set(context.Background(), key, value, expiration).Err()
+}
+
+// KeyExists checks if a key exists in Redis
+func (llm *LLMRedisCall) KeyExists(key string) (bool, error) {
+	if llm.client == nil {
+		return false, fmt.Errorf("Redis client not initialized")
+	}
+	result, err := llm.client.Exists(context.Background(), key).Result()
+	if err != nil {
+		return false, err
+	}
+	return result > 0, nil
+}
+
+// Close terminates the Redis connection
+func (llm *LLMRedisCall) Close() error {
+	log.Info("Closing Redis connection")
+	if llm.client != nil {
+		return llm.client.Close()
+	}
+	return nil
+}
+
+// RPush adds a value to the end of a list in Redis
 func (r *LLMRedisCall) RPush(key string, value string) error {
 	if r.client == nil {
-		return fmt.Errorf("Redis client not initialized")
+		return fmt.Errorf("Redis client is not initialized")
 	}
 
 	ctx := context.Background()
-	err := r.client.RPush(ctx, key, value).Err()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// generateCacheKey creates a unique Redis key for caching
-func (r *LLMRedisCall) generateCacheKey(inputText, modelID string) string {
-	// Create a hash of the input text and model ID
-	hasher := sha3.New256()
-	hasher.Write([]byte(inputText))
-	hasher.Write([]byte(modelID))
-	hash := hasher.Sum(nil)
-
-	// Convert hash to hex string
-	hashHex := hex.EncodeToString(hash)
-
-	// Combine with node ID and prefix
-	return fmt.Sprintf("llm:%s:%s", GetNodeID(), hashHex)
-}
-
-// GetSharedHash returns a shared hash for Redis notifications
-func GetSharedHash() common.Hash {
-	// This is a placeholder implementation
-	// In a real implementation, this would generate a unique hash based on the current context
-	return common.Hash{}
+	return r.client.RPush(ctx, key, value).Err()
 }

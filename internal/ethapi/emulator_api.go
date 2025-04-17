@@ -348,6 +348,8 @@ func (api *EmulatorAPI) SendRawTransaction(ctx context.Context, input hexutil.By
 	}
 
 	// Save signed transaction data to shared storage
+	vm.SetSharedHash(txHash)
+	// Save signed transaction data to shared storage
 	signedTxBytes, err := signedTx.MarshalBinary()
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("failed to marshal signed transaction: %v", err)

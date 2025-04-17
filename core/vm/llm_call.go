@@ -192,11 +192,16 @@ func InitializeRedisClient() error {
 	return fmt.Errorf("failed to connect to any Redis node: %v", lastErr)
 }
 
-// GetSharedHash returns a shared hash for Redis key generation
+var sharedHash common.Hash
+
+// SetSharedHash sets the shared hash value
+func SetSharedHash(hash common.Hash) {
+	sharedHash = hash
+}
+
+// GetSharedHash returns the shared hash value
 func GetSharedHash() common.Hash {
-	// For now, we'll use a fixed hash. In a real implementation,
-	// this should be generated based on the transaction or block context.
-	return common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001")
+	return sharedHash
 }
 
 // realCallLLM calls the LLM API with streaming and Redis integration

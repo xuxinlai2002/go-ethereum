@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/internal/shared"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/redis/go-redis/v9"
 )
@@ -192,21 +192,8 @@ func InitializeRedisClient() error {
 	return fmt.Errorf("failed to connect to any Redis node: %v", lastErr)
 }
 
-var sharedHash common.Hash
-
-// SetSharedHash sets the shared hash value
-func SetSharedHash(hash common.Hash) {
-	sharedHash = hash
-}
-
-// GetSharedHash returns the shared hash value
-func GetSharedHash() common.Hash {
-	return sharedHash
-}
-
 // realCallLLM calls the LLM API with streaming and Redis integration
 func realCallLLM(inputText, modelID string, maxOutputLength uint64) string {
-
 	fmt.Println("### xxl 0003 realCallLLM 00 ", "inputText", inputText, "modelID", modelID, "maxOutputLength", maxOutputLength)
 	// init redis client
 	if err := InitializeRedisClient(); err != nil {
@@ -221,7 +208,7 @@ func realCallLLM(inputText, modelID string, maxOutputLength uint64) string {
 	}
 
 	// get shared hash
-	hash := GetSharedHash()
+	hash := shared.GetSharedHash()
 	redisKey := fmt.Sprintf("preExecV2_%x", hash)
 
 	log.Info("LLM call started", "redisKey", redisKey)

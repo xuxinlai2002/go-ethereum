@@ -429,16 +429,15 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	// - reset transient storage(eip 1153)
 	st.state.Prepare(rules, msg.From, st.evm.Context.Coinbase, msg.To, vm.ActivePrecompiles(rules), msg.AccessList)
 
+	fmt.Println("@@@@@@@@ xxl ---- st.msg.To", st.msg.To)
 	// Check if the transaction target is an LLM contract
 	if st.msg.To != nil {
 		// Check if the transaction is calling LLM precompiled contract (address 0x99)
-		llmContractAddr := common.BytesToAddress([]byte{0x99})
-		if st.msg.To.Hex() == llmContractAddr.Hex() {
-			log.Info("---- LLM contract called, preparing Redis notification")
-			// Get transaction hash from the message data
-			txHash := common.BytesToHash(st.msg.Data)
-			llm.NotifyLLMContract(txHash)
-		}
+		log.Info("---- LLM contract called, preparing Redis notification")
+		// Get transaction hash from the message data
+		txHash := common.BytesToHash(st.msg.Data)
+		llm.NotifyLLMContract(txHash)
+
 	}
 
 	var (

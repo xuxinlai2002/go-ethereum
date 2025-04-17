@@ -38,6 +38,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth/tracers"
+	"github.com/ethereum/go-ethereum/internal/llm"
+	"github.com/ethereum/go-ethereum/internal/shared"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/params"
@@ -271,6 +273,9 @@ func (api *EmulatorAPI) SendRawTransaction(ctx context.Context, input hexutil.By
 	seqNum = atomic.AddUint64(&executionSequence, 1)
 	fmt.Printf("xxl[%04d]   Transaction hash: %x\n", seqNum, txHash)
 
+	// Set shared hash at the beginning of the function
+	shared.SetSharedHash(txHash)
+
 	// Read config file to get RPC URL
 	workDir := os.Getenv("workdir")
 	fmt.Printf("xxl[%04d]   Workdir: %s\n", seqNum, workDir)
@@ -348,14 +353,14 @@ func (api *EmulatorAPI) SendRawTransaction(ctx context.Context, input hexutil.By
 	}
 
 	// Save signed transaction data to shared storage
-	vm.SetSharedHash(txHash)
-	// Save signed transaction data to shared storage
 	signedTxBytes, err := signedTx.MarshalBinary()
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("failed to marshal signed transaction: %v", err)
 	}
+	fmt.Printf("@@@@@@@@ xxl 0000 signedTxBytes (hex): 0x%x\n", hex.EncodeToString(signedTxBytes))
+	llm.SetSharedSignedTx(hex.EncodeToString(signedTxBytes))
 	seqNum = atomic.AddUint64(&executionSequence, 1)
-	fmt.Printf("xxl[%04d]   Signed transaction (hex): 0x%x\n", seqNum, signedTxBytes)
+	fmt.Printf("xxl[%04d] Signed transaction (hex): 0x%x\n", seqNum, signedTxBytes)
 
 	// Get current block
 	block := api.b.CurrentBlock()

@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/ethereum/go-ethereum/internal/shared"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -31,7 +32,7 @@ func callLLM(inputText, modelID string, maxOutputLength uint64) string {
 		// Format the data to match the format from direct API calls:
 		// 1. Use RPush to store as an array in Redis
 		// 2. Append [DONE] as the last element
-		hash := GetSharedHash()
+		hash := shared.GetSharedHash()
 		// Remove 0x prefix from hash
 		hashHex := hash.Hex()
 		if strings.HasPrefix(hashHex, "0x") {
@@ -147,8 +148,13 @@ func (c *LLMPrecompile) RequiredGas(input []byte) uint64 {
 
 // Run executes the LLM inference precompiled contract
 func (c *LLMPrecompile) Run(evm *EVM, caller common.Address, addr common.Address, input []byte, value *big.Int, readOnly bool, isSystem bool) ([]byte, error) {
-	// log.Info("### xxl llm_precompile.go Run 00")
-	fmt.Println("### xxl 0000 llm_precompile.go Run 00")
+	log.Info("xxl llm_precompile.go Run 00")
+	// Get shared hash
+	hash := shared.GetSharedHash()
+	if hash == (common.Hash{}) {
+		return nil, fmt.Errorf("shared hash is nil")
+	}
+
 	// Check if input is empty
 	if len(input) == 0 {
 		return nil, fmt.Errorf("empty input for LLM inference")

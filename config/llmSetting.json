@@ -4,5 +4,5 @@
     "redis_password": "aBcD123$@#xYz789!",
     "model_id": "DeepSeek-V3",
     "private_key": "a6392433fe30f2bf8564228240eddd41c7ad12ab5332438254054896790ceebe",
-    "rpc_url": "https://rpc.agtchain.net"
+    "rpc_url": "http://localhost:8545"
 }

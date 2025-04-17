@@ -70,9 +70,13 @@ JavaScript API. See https://geth.ethereum.org/docs/interacting-with-geth/javascr
 func localConsole(ctx *cli.Context) error {
 	// Create and start the node based on the CLI flags
 	prepare(ctx)
-	stack, backend := makeFullNode(ctx)
-	startNode(ctx, stack, backend, true)
+	stack, backend, err := makeFullNode(ctx)
+	if err != nil {
+		utils.Fatalf("Failed to create node: %v", err)
+	}
 	defer stack.Close()
+
+	startNode(ctx, stack, backend, true)
 
 	// Attach to the newly started node and create the JavaScript console.
 	client := stack.Attach()

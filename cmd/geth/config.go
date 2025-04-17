@@ -168,7 +168,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 }
 
 // makeFullNode loads geth configuration and creates the Ethereum backend.
-func makeFullNode(ctx *cli.Context) (*node.Node, libethapi.Backend) {
+func makeFullNode(ctx *cli.Context) (*node.Node, libethapi.Backend, error) {
 	stack, cfg := makeConfigNode(ctx)
 	if ctx.IsSet(utils.OverrideCancun.Name) {
 		v := ctx.Uint64(utils.OverrideCancun.Name)
@@ -182,7 +182,9 @@ func makeFullNode(ctx *cli.Context) (*node.Node, libethapi.Backend) {
 	backend, eth := utils.RegisterEthService(stack, &cfg.Eth)
 
 	// Register the emulator API
-	ethapi.RegisterEmulatorAPI(stack)
+	if err := ethapi.RegisterEmulatorAPI(stack, eth.APIBackend); err != nil {
+		return nil, nil, err
+	}
 
 	// Create gauge with geth system and build information
 	if eth != nil { // The 'eth' backend may be nil in light mode
@@ -232,7 +234,7 @@ func makeFullNode(ctx *cli.Context) (*node.Node, libethapi.Backend) {
 			utils.Fatalf("failed to register catalyst service: %v", err)
 		}
 	}
-	return stack, backend
+	return stack, backend, nil
 }
 
 // dumpConfig is the dumpconfig command.

@@ -339,8 +339,14 @@ func geth(ctx *cli.Context) error {
 	}
 
 	prepare(ctx)
-	stack, backend := makeFullNode(ctx)
+	stack, backend, err := makeFullNode(ctx)
+	if err != nil {
+		utils.Fatalf("Failed to create node: %v", err)
+	}
 	defer stack.Close()
+
+	// Start up the node itself
+	utils.StartNode(ctx, stack, false)
 
 	startNode(ctx, stack, backend, false)
 	stack.Wait()
@@ -352,9 +358,6 @@ func geth(ctx *cli.Context) error {
 // miner.
 func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend, isConsole bool) {
 	debug.Memsize.Add("node", stack)
-
-	// Start up the node itself
-	utils.StartNode(ctx, stack, isConsole)
 
 	// Unlock any account specifically requested
 	unlockAccounts(ctx, stack)
